@@ -11,6 +11,7 @@ import { DateRangePicker } from "@/components/DateRangePicker";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
 import { Separator } from "@/components/ui/separator";
+import { toast } from "@/components/ui/use-toast";
 
 interface AttendanceReport {
   id: string;
@@ -25,7 +26,7 @@ const Reports = () => {
   const { fetchAttendanceByDateRange, isLoading } = useAttendance();
   const navigate = useNavigate();
   const [reportData, setReportData] = useState<AttendanceReport[]>([]);
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(new Date().setDate(new Date().getDate() - 30)),  // Default: last 30 days
     to: new Date()
   });
@@ -37,13 +38,20 @@ const Reports = () => {
   }, [isAuthenticated, navigate]);
 
   useEffect(() => {
-    if (dateRange.from && dateRange.to) {
+    if (dateRange?.from && dateRange?.to) {
       generateReport();
     }
   }, [dateRange]);
 
   const generateReport = async () => {
-    if (!dateRange.from || !dateRange.to) return;
+    if (!dateRange?.from || !dateRange?.to) {
+      toast({
+        title: "Date range required",
+        description: "Please select both start and end dates for the report",
+        variant: "destructive",
+      });
+      return;
+    }
     
     const records = await fetchAttendanceByDateRange(dateRange);
     
@@ -69,7 +77,14 @@ const Reports = () => {
   };
 
   const downloadCSV = () => {
-    if (reportData.length === 0) return;
+    if (reportData.length === 0) {
+      toast({
+        title: "No data to export",
+        description: "Generate a report first before downloading",
+        variant: "destructive",
+      });
+      return;
+    }
     
     // Create CSV header
     const csvHeader = "Date,Check In Time,Check Out Time,Duration\n";
