@@ -1,225 +1,218 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { format } from "date-fns";
+import { 
+  BarChart, 
+  LogOut, 
+  UserCircle, 
+  CheckCircle, 
+  XCircle, 
+  Clock,
+  Calendar,
+  FileText
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useAuth } from "@/context/AuthContext";
 import { useAttendance } from "@/context/AttendanceContext";
-import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { LogIn, LogOut, User, Clock, Calendar } from "lucide-react";
 
 const Dashboard = () => {
-  const { user, logout } = useAuth();
-  const { todayRecord, recentRecords, checkIn, checkOut, isCheckedIn } = useAttendance();
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const navigate = useNavigate();
+  const { user, isAuthenticated, logout } = useAuth();
+  const { todayRecord, recentRecords, checkIn, checkOut, isCheckedIn, isLoading } = useAttendance();
+  
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate("/login");
+    }
+  }, [isAuthenticated, navigate]);
 
-  // Update current time every second
-  useState(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-    return () => clearInterval(timer);
-  });
-
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
+  // Format time from Date object
   const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit'
-    });
-  };
-
-  const calculateDuration = (checkIn: Date, checkOut: Date | null) => {
-    if (!checkOut) return "In progress";
-    
-    const diff = checkOut.getTime() - checkIn.getTime();
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    
-    return `${hours}h ${minutes}m`;
+    return format(date, "h:mm a");
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="bg-white shadow">
-        <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center">
-              <Clock className="h-8 w-8 text-primary mr-2" />
-              <h1 className="text-2xl font-bold text-gray-900">Student Attendance</h1>
-            </div>
-            <div className="flex items-center">
-              <span className="mr-4 text-gray-600">{user?.name}</span>
-              <Button variant="outline" onClick={logout}>Logout</Button>
-            </div>
+    <div className="container py-8">
+      <div className="flex flex-col gap-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">Student Attendance Dashboard</h1>
+            {user && <p className="text-muted-foreground">Welcome, {user.user_metadata?.name || user.email}</p>}
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/reports")}>
+              <FileText className="mr-2 h-4 w-4" />
+              View Reports
+            </Button>
+            <Button variant="outline" onClick={logout}>
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign Out
+            </Button>
           </div>
         </div>
-      </header>
 
-      {/* Main content */}
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Current time */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Current Time</CardTitle>
-              <CardDescription>Real-time clock</CardDescription>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Clock className="mr-2 h-5 w-5" />
+                Today's Attendance
+              </CardTitle>
+              <CardDescription>
+                {new Date().toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="text-center py-4">
-                <h2 className="text-3xl font-bold">{formatTime(currentTime)}</h2>
-                <p className="text-gray-500 mt-2">{formatDate(currentTime)}</p>
+              <div className="flex flex-col items-center gap-6 py-4">
+                <div className="grid w-full grid-cols-2 gap-4 text-center">
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-4">
+                    <p className="text-muted-foreground text-sm">Check In</p>
+                    <p className="mt-2 font-semibold text-xl">
+                      {todayRecord ? formatTime(todayRecord.check_in_time) : "Not Yet"}
+                    </p>
+                  </div>
+                  <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-4">
+                    <p className="text-muted-foreground text-sm">Check Out</p>
+                    <p className="mt-2 font-semibold text-xl">
+                      {todayRecord?.check_out_time 
+                        ? formatTime(todayRecord.check_out_time) 
+                        : "Not Yet"}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="w-full flex gap-4">
+                  <Button 
+                    className="w-full"
+                    onClick={checkIn}
+                    disabled={!!todayRecord || isLoading}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4" />
+                    Check In
+                  </Button>
+                  <Button 
+                    className="w-full"
+                    variant="outline"
+                    onClick={checkOut}
+                    disabled={!isCheckedIn || isLoading}
+                  >
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Check Out
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>
 
-          {/* Today's status */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">Today's Status</CardTitle>
-              <CardDescription>Attendance for today</CardDescription>
+          <Card className="col-span-1">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <UserCircle className="mr-2 h-5 w-5" />
+                Attendance Status
+              </CardTitle>
+              <CardDescription>Your current attendance overview</CardDescription>
             </CardHeader>
-            <CardContent>
-              {todayRecord ? (
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Check In:</span>
-                    <span className="font-medium">{formatTime(todayRecord.checkInTime)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Check Out:</span>
-                    <span className="font-medium">
-                      {todayRecord.checkOutTime 
-                        ? formatTime(todayRecord.checkOutTime) 
-                        : "Not checked out yet"}
+            <CardContent className="pb-2">
+              <div className="flex flex-col gap-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    <span className="font-medium flex items-center">
+                      {isCheckedIn ? (
+                        <>
+                          <span className="h-2 w-2 rounded-full bg-green-500 mr-2"></span>
+                          Checked In
+                        </>
+                      ) : todayRecord?.check_out_time ? (
+                        <>
+                          <span className="h-2 w-2 rounded-full bg-gray-500 mr-2"></span>
+                          Checked Out
+                        </>
+                      ) : (
+                        <>
+                          <span className="h-2 w-2 rounded-full bg-red-500 mr-2"></span>
+                          Not Checked In
+                        </>
+                      )}
                     </span>
                   </div>
-                  {todayRecord.checkOutTime && (
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Duration:</span>
-                      <span className="font-medium">
-                        {calculateDuration(todayRecord.checkInTime, todayRecord.checkOutTime)}
-                      </span>
-                    </div>
-                  )}
+                  <div className="flex flex-col gap-1">
+                    <span className="text-sm text-muted-foreground">Last 7 Days</span>
+                    <span className="font-medium">
+                      {recentRecords.filter(r => 
+                        new Date(r.date) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                      ).length} days
+                    </span>
+                  </div>
                 </div>
-              ) : (
-                <div className="text-center py-4">
-                  <p className="text-gray-500">No attendance recorded for today</p>
-                </div>
-              )}
-            </CardContent>
-            <CardFooter>
-              {!todayRecord ? (
-                <Button 
-                  className="w-full" 
-                  onClick={checkIn}
-                >
-                  <LogIn className="mr-2 h-4 w-4" /> Check In
-                </Button>
-              ) : !todayRecord.checkOutTime ? (
-                <Button 
-                  className="w-full" 
-                  variant="secondary"
-                  onClick={checkOut}
-                >
-                  <LogOut className="mr-2 h-4 w-4" /> Check Out
-                </Button>
-              ) : (
-                <Badge className="w-full justify-center py-2" variant="outline">
-                  Completed for today
-                </Badge>
-              )}
-            </CardFooter>
-          </Card>
-
-          {/* User info */}
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-lg">User Information</CardTitle>
-              <CardDescription>Your account details</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center py-4">
-                <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-4">
-                  <User className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold">{user?.name}</h3>
-                <p className="text-gray-500">{user?.email}</p>
               </div>
             </CardContent>
+            <Separator className="my-2" />
+            <CardFooter>
+              <Button variant="outline" className="w-full" onClick={() => navigate("/reports")}>
+                <BarChart className="mr-2 h-4 w-4" />
+                View Detailed Reports
+              </Button>
+            </CardFooter>
           </Card>
         </div>
 
-        {/* Recent attendance */}
-        <Card className="mt-8">
+        <Card>
           <CardHeader>
-            <CardTitle>Recent Attendance</CardTitle>
-            <CardDescription>Your attendance history</CardDescription>
+            <CardTitle className="flex items-center">
+              <Calendar className="mr-2 h-5 w-5" />
+              Recent Attendance
+            </CardTitle>
+            <CardDescription>Your last 10 attendance records</CardDescription>
           </CardHeader>
           <CardContent>
             {recentRecords.length > 0 ? (
-              <div className="space-y-4">
-                {recentRecords.map((record) => (
-                  <div key={record.id} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center">
-                        <Calendar className="h-5 w-5 text-gray-500 mr-2" />
-                        <span className="font-medium">{new Date(record.date).toLocaleDateString('en-US', {
-                          weekday: 'short',
-                          month: 'short',
-                          day: 'numeric'
-                        })}</span>
-                      </div>
-                      <Badge variant={record.checkOutTime ? "outline" : "secondary"}>
-                        {record.checkOutTime ? "Completed" : "In Progress"}
-                      </Badge>
-                    </div>
-                    <Separator className="my-2" />
-                    <div className="grid grid-cols-3 gap-2 text-sm">
-                      <div>
-                        <p className="text-gray-500">Check In</p>
-                        <p className="font-medium">{formatTime(record.checkInTime)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Check Out</p>
-                        <p className="font-medium">
-                          {record.checkOutTime ? formatTime(record.checkOutTime) : "—"}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Duration</p>
-                        <p className="font-medium">{calculateDuration(record.checkInTime, record.checkOutTime)}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-3 px-4">Date</th>
+                      <th className="text-left py-3 px-4">Check In</th>
+                      <th className="text-left py-3 px-4">Check Out</th>
+                      <th className="text-left py-3 px-4">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {recentRecords.map((record) => (
+                      <tr key={record.id} className="border-b hover:bg-slate-50">
+                        <td className="py-3 px-4">{format(new Date(record.date), 'MMM dd, yyyy')}</td>
+                        <td className="py-3 px-4">{formatTime(record.check_in_time)}</td>
+                        <td className="py-3 px-4">
+                          {record.check_out_time ? formatTime(record.check_out_time) : "Not checked out"}
+                        </td>
+                        <td className="py-3 px-4">
+                          {record.check_out_time ? (
+                            <span className="inline-flex items-center rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-800">
+                              Complete
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-medium text-yellow-800">
+                              Incomplete
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">No attendance records found</p>
+              <div className="text-center py-6 text-muted-foreground">
+                No attendance records found.
               </div>
             )}
           </CardContent>
         </Card>
-      </main>
+      </div>
     </div>
   );
 };
