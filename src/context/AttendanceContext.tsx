@@ -1,8 +1,8 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from './AuthContext';
 import { supabase } from "@/integrations/supabase/client";
+import { DateRange } from "react-day-picker";
 
 interface AttendanceRecord {
   id: string;
@@ -10,11 +10,6 @@ interface AttendanceRecord {
   check_in_time: Date;
   check_out_time: Date | null;
   date: string;
-}
-
-interface DateRange {
-  from: Date | undefined;
-  to: Date | undefined;
 }
 
 interface AttendanceContextType {
